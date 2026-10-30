@@ -52,6 +52,9 @@ client.signOut();
 | `refreshAccessToken()`       | 用 refresh_token 刷新 access_token |
 | `discover()`                 | 获取 OIDC 发现文档                    |
 
-## SSO 服务端
+# 发布npm版本
 
-配套后端：sirpho_server (`com.sirpho.modules.sso`)
+1. 修改`package.json`中的版本号
+2. 运行`pnpm build`打包
+3. 运行`npm login`登录
+4. 运行`npm publish`发布
