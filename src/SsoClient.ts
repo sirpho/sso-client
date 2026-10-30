@@ -148,29 +148,32 @@ export class SsoClient {
 
   /**
    * 登出
-   * 清除本地 token → POST 请求 SSO 登出 → 跳转到登出后地址
+   * 清除本地 token → 表单提交（浏览器导航）SSO 登出 → 服务端重定向回登出后地址
+   *
+   * 用表单导航而非 fetch：跨域时 fetch 无法携带/应用 cookie，
+   * 会导致 SSO 服务端会话未被清除，回到应用后又被自动登录。
    */
-  async signOut(): Promise<void> {
+  signOut(): void {
     this.clearTokens();
 
-    const params = new URLSearchParams({
-      client_id: this.config.clientId,
-      post_logout_redirect_uri: this.config.redirectUri,
-    });
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `${this.config.endpoint}/sso/logout`;
+    form.style.display = 'none';
 
-    try {
-      const resp = await fetch(`${this.config.endpoint}/sso/logout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
-        credentials: 'include',
-      });
-      const data = await resp.json();
-      window.location.href = data.data?.redirect_uri || this.config.redirectUri || '/';
-    } catch {
-      // 登出请求失败也跳转回调页
-      window.location.href = this.config.redirectUri || '/';
-    }
+    const addField = (name: string, value: string) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    };
+
+    addField('client_id', this.config.clientId);
+    addField('post_logout_redirect_uri', this.config.redirectUri);
+
+    document.body.appendChild(form);
+    form.submit();
   }
 
   /** --------------------------------------- */

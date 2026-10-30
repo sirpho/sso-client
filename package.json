@@ -1,6 +1,6 @@
 {
   "name": "@sirpho/sso-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "SSO 单点登录前端 SDK - OAuth 2.0 / OIDC + PKCE",
   "files": [
