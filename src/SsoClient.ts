@@ -129,7 +129,14 @@ export class SsoClient {
    * 向后端校验 access_token 是否有效
    * @returns 有效返回 true
    */
+  /**
+   * 向后端校验 access_token 是否有效
+   * 仅在服务端明确返回 active=false 时判定无效；接口异常/网络错误/超时均不误判
+   * @returns 有效返回 true
+   */
   async introspectToken(token: string): Promise<boolean> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
     try {
       const params = new URLSearchParams({ token });
       const resp = await fetch(`${this.config.endpoint}/sso/introspect`, {
@@ -137,12 +144,15 @@ export class SsoClient {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString(),
         credentials: 'include',
+        signal: controller.signal,
       });
-      if (!resp.ok) return false;
+      if (!resp.ok) return true;
       const data = await resp.json();
-      return data.data?.active === true;
+      return data.data?.active !== false;
     } catch {
-      return false;
+      return true;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -154,6 +164,9 @@ export class SsoClient {
    * 会导致 SSO 服务端会话未被清除，回到应用后又被自动登录。
    */
   signOut(): void {
+    // 先取出 token，供服务端撤销（单点登出）
+    const accessToken = this.getAccessToken() || '';
+    const refreshToken = this.getRefreshToken() || '';
     this.clearTokens();
 
     const form = document.createElement('form');
@@ -171,6 +184,12 @@ export class SsoClient {
 
     addField('client_id', this.config.clientId);
     addField('post_logout_redirect_uri', this.config.redirectUri);
+    if (accessToken) {
+      addField('access_token', accessToken);
+    }
+    if (refreshToken) {
+      addField('refresh_token', refreshToken);
+    }
 
     document.body.appendChild(form);
     form.submit();
